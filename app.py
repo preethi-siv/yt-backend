@@ -3,10 +3,17 @@ from flask_cors import CORS
 import yt_dlp
 
 app = Flask(__name__)
-CORS(app)
 
-@app.route('/get-video', methods=['POST'])
+# 🔥 IMPORTANT FIX
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.route('/get-video', methods=['POST', 'OPTIONS'])
 def get_video():
+
+    # handle preflight request
+    if request.method == 'OPTIONS':
+        return '', 200
+
     data = request.get_json()
 
     if not data or 'url' not in data:
