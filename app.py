@@ -1,14 +1,18 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import yt_dlp
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/get-video', methods=['POST'])
 def get_video():
-    url = request.form.get('url')
+    data = request.get_json()
 
-    if not url:
+    if not data or 'url' not in data:
         return jsonify({"status": False, "message": "URL missing"})
+
+    url = data.get('url')
 
     ydl_opts = {
         'quiet': True,
