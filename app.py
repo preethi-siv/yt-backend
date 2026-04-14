@@ -1,55 +1,43 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import yt_dlp
+from pytube import YouTube
 
 app = Flask(__name__)
-
-# 🔥 IMPORTANT FIX
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-@app.route('/get-video', methods=['POST', 'OPTIONS'])
+@app.route('/')
+def home():
+    return "Backend is running"
+
+@app.route('/get-video', methods=['POST'])
 def get_video():
-
-    # handle preflight request
-    if request.method == 'OPTIONS':
-        return '', 200
-
-    data = request.get_json()
-
-    if not data or 'url' not in data:
-        return jsonify({"status": False, "message": "URL missing"})
-
-    url = data.get('url')
-
-    ydl_opts = {
-        'quiet': True,
-        'skip_download': True,
-        'no_warnings': True
-    }
-
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+        data = request.get_json()
+        url = data.get('url')
 
-            formats = []
+        if not url:
+            return jsonify({"status": False, "message": "No URL provided"})
 
-            for f in info['formats']:
-                if (
-                    f.get('ext') == 'mp4' and
-                    f.get('height') and
-                    f.get('acodec') != 'none' and
-                    f.get('vcodec') != 'none'
-                ):
-                    formats.append({
-                        "quality": f"{f.get('height')}p",
-                        "url": f.get('url')
-                    })
+        yt = YouTube(url)
 
-            return jsonify({
-                "status": True,
-                "title": info.get('title'),
-                "formats": formats[:5]
-            })
+        streams = yt.streams.filter(file_extension='mp4').order_by('resolution').desc()
+
+        formats = []
+        used = set()
+
+        for stream in streams:
+            if stream.resolution and stream.resolution not in used:
+                formats.append({
+                    "quality": stream.resolution,
+                    "url": stream.url
+                })
+                used.add(stream.resolution)
+
+        return jsonify({
+            "status": True,
+            "title": yt.title,
+            "formats": formats
+        })
 
     except Exception as e:
         return jsonify({
@@ -57,5 +45,5 @@ def get_video():
             "message": str(e)
         })
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+if __name__ == '__main__':
+    app.run(debug=True)
