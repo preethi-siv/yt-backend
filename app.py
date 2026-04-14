@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from pytube import YouTube
+import yt_dlp
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -18,25 +18,32 @@ def get_video():
         if not url:
             return jsonify({"status": False, "message": "No URL provided"})
 
-        yt = YouTube(url)
+        ydl_opts = {
+            'quiet': True,
+            'skip_download': True
+        }
 
-        streams = yt.streams.filter(file_extension='mp4').order_by('resolution').desc()
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
 
         formats = []
         used = set()
 
-        for stream in streams:
-            if stream.resolution and stream.resolution not in used:
-                formats.append({
-                    "quality": stream.resolution,
-                    "url": stream.url
-                })
-                used.add(stream.resolution)
+        for f in info['formats']:
+            if f.get('height') and f.get('url'):
+                quality = f"{f['height']}p"
+
+                if quality not in used:
+                    formats.append({
+                        "quality": quality,
+                        "url": f['url']
+                    })
+                    used.add(quality)
 
         return jsonify({
             "status": True,
-            "title": yt.title,
-            "formats": formats
+            "title": info.get('title'),
+            "formats": formats[:6]  # limit for clean UI
         })
 
     except Exception as e:
