@@ -20,9 +20,10 @@ def get_video():
 
         ydl_opts = {
             'quiet': True,
-            'skip_download': True
+            'skip_download': True,
+            'cookiefile': 'cookies.txt'
         }
-
+    
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
