@@ -3,7 +3,7 @@ from flask_cors import CORS
 import yt_dlp
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
 @app.route('/')
 def home():
@@ -22,28 +22,28 @@ def get_video():
             'quiet': True,
             'skip_download': True
         }
-    
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-        formats = []
-        used = set()
+        video_url = None
 
+        # Find only 360p
         for f in info['formats']:
-            if f.get('height') and f.get('url'):
-                quality = f"{f['height']}p"
+            if f.get('height') == 360 and f.get('url'):
+                video_url = f['url']
+                break
 
-                if quality not in used:
-                    formats.append({
-                        "quality": quality,
-                        "url": f['url']
-                    })
-                    used.add(quality)
+        if not video_url:
+            return jsonify({
+                "status": False,
+                "message": "360p not available"
+            })
 
         return jsonify({
             "status": True,
             "title": info.get('title'),
-            "formats": formats[:6]  # limit for clean UI
+            "url": video_url
         })
 
     except Exception as e:
